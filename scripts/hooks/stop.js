@@ -13,6 +13,7 @@
 const fs = require('fs')
 const path = require('path')
 const { execSync } = require('child_process')
+const logger = require('../lib/logger')
 
 const HOOK_NAME = 'stop'
 const ROOT = process.cwd()
@@ -27,16 +28,20 @@ exports.run = async function run(_rawInput) {
     const testFiles = collectTestFiles(testsDir)
     if (testFiles.length > 0) {
       console.error(`[${HOOK_NAME}] 테스트 실행 중 (${testFiles.length}개)...`)
+      logger.info(HOOK_NAME, '테스트 실행 시작', { count: testFiles.length })
       try {
         execSync(`node "${testRunner}"`, { cwd: ROOT, stdio: 'pipe', encoding: 'utf8' })
         console.error(`[${HOOK_NAME}] ✓ 모든 테스트 통과`)
+        logger.info(HOOK_NAME, '테스트 전부 통과')
       } catch (err) {
         const out = (err.stdout ?? '') + (err.stderr ?? '')
         console.error(`[${HOOK_NAME}] ✗ 테스트 실패:\n${out.trim()}`)
+        logger.error(HOOK_NAME, '테스트 실패', { output: out.trim().slice(0, 300) })
         // 테스트 실패해도 세션 종료는 허용 (exit 0 유지)
       }
     } else {
       console.error(`[${HOOK_NAME}] 테스트 파일 없음 — 건너뜀`)
+      logger.info(HOOK_NAME, '테스트 파일 없음')
     }
   } else if (process.env.ECC_SKIP_TESTS === '1') {
     console.error(`[${HOOK_NAME}] 테스트 건너뜀 (ECC_SKIP_TESTS=1)`)
@@ -48,8 +53,10 @@ exports.run = async function run(_rawInput) {
     try {
       execSync(`node "${syncScript}"`, { cwd: ROOT, stdio: 'pipe' })
       console.error(`[${HOOK_NAME}] ✓ 스킬 동기화 완료`)
+      logger.info(HOOK_NAME, '스킬 동기화 완료')
     } catch {
       console.error(`[${HOOK_NAME}] ⚠  스킬 동기화 실패`)
+      logger.warn(HOOK_NAME, '스킬 동기화 실패')
     }
   }
 
@@ -68,12 +75,17 @@ exports.run = async function run(_rawInput) {
       if (lines.length > 5) {
         console.error(`  ... 외 ${lines.length - 5}개`)
       }
+      logger.info(HOOK_NAME, '미커밋 변경 파일', { count: lines.length, files: lines.slice(0, 5) })
     } else {
       console.error(`[${HOOK_NAME}] 미커밋 변경사항 없음`)
+      logger.info(HOOK_NAME, '미커밋 변경사항 없음')
     }
   } catch {
     // git 없으면 무시
   }
+
+  // 세션 종료 구분선
+  logger.divider('END')
 
   return null
 }

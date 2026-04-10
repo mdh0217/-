@@ -13,6 +13,7 @@
 const path = require('path')
 const { execSync } = require('child_process')
 const fs = require('fs')
+const logger = require('../lib/logger')
 
 const HOOK_NAME = 'post-edit-lint'
 const ROOT = process.cwd()
@@ -77,9 +78,11 @@ function runSilent(cmd, label) {
   try {
     execSync(cmd, { cwd: ROOT, stdio: 'pipe', encoding: 'utf8' })
     console.error(`[${HOOK_NAME}] ✓ ${label}`)
+    logger.info(HOOK_NAME, label)
   } catch (err) {
     // lint 오류는 경고로만 표시 — 차단 안 함
     const msg = (err.stdout ?? err.message ?? '').toString().split('\n').slice(0, 3).join('\n')
     console.error(`[${HOOK_NAME}] ⚠  ${label}\n  ${msg}`)
+    logger.warn(HOOK_NAME, label, { error: msg.trim() })
   }
 }

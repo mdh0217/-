@@ -38,3 +38,6 @@ out/
 
 # Claude 체크포인트 (자동 생성)
 .claude/checkpoints/
+
+# 로그 파일 (자동 생성)
+logs/
