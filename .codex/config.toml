@@ -1,0 +1,73 @@
+# ECC — Codex CLI 프로젝트 로컬 기준선
+# https://github.com/affaan-m/everything-claude-code
+
+approval_policy = "on-request"
+sandbox_mode = "workspace-write"
+web_search = "live"
+
+[features]
+multi_agent = true
+
+# ---------------------------------------------------------------------------
+# MCP 서버
+# ---------------------------------------------------------------------------
+
+[mcp_servers.github]
+command = "npx"
+args = ["-y", "@modelcontextprotocol/server-github"]
+timeout = 30
+
+[mcp_servers.context7]
+command = "npx"
+args = ["-y", "@upstash/context7-mcp"]
+timeout = 30
+
+[mcp_servers.exa]
+command = "npx"
+args = ["-y", "exa-mcp-server"]
+timeout = 30
+
+[mcp_servers.memory]
+command = "npx"
+args = ["-y", "@modelcontextprotocol/server-memory"]
+timeout = 30
+
+[mcp_servers.playwright]
+command = "npx"
+args = ["-y", "@playwright/mcp"]
+timeout = 60
+
+[mcp_servers.sequential-thinking]
+command = "npx"
+args = ["-y", "@modelcontextprotocol/server-sequential-thinking"]
+timeout = 30
+
+# ---------------------------------------------------------------------------
+# 멀티 에이전트 역할
+# ---------------------------------------------------------------------------
+
+[agents.explorer]
+config = ".codex/agents/explorer.toml"
+description = "읽기 전용 코드베이스 탐색"
+
+[agents.reviewer]
+config = ".codex/agents/reviewer.toml"
+description = "코드 품질 및 보안 검토"
+
+[agents.docs-researcher]
+config = ".codex/agents/docs-researcher.toml"
+description = "API 및 문서 검증"
+
+# ---------------------------------------------------------------------------
+# 프로파일
+# ---------------------------------------------------------------------------
+
+[profiles.strict]
+approval_policy = "always"
+sandbox_mode = "read-only"
+description = "최대 안전 — 읽기 전용 접근, 항상 승인 필요"
+
+[profiles.yolo]
+approval_policy = "never"
+sandbox_mode = "workspace-write"
+description = "승인 게이트 없음 — 신뢰할 수 있는 환경에서만 사용"

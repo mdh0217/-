@@ -1,0 +1,6 @@
+interface:
+  display_name: "Everything Claude Code"
+  short_description: "everything-claude-code의 저장소 특화 패턴 및 워크플로우"
+  default_prompt: "everything-claude-code 저장소 스킬을 사용하여 기존 아키텍처, 테스트, 워크플로우 컨벤션을 따르세요."
+policy:
+  allow_implicit_invocation: true

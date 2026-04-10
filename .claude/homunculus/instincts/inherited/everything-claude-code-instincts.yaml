@@ -1,0 +1,162 @@
+# affaan-m/everything-claude-code 큐레이션된 학습 instincts
+# 가져오기: /instinct-import .claude/homunculus/instincts/inherited/everything-claude-code-instincts.yaml
+
+---
+id: everything-claude-code-conventional-commits
+trigger: "everything-claude-code에서 커밋을 만들 때"
+confidence: 0.9
+domain: git
+source: repo-curation
+source_repo: affaan-m/everything-claude-code
+---
+
+# Everything Claude Code 컨벤셔널 커밋
+
+## 행동 지침
+
+`feat:`, `fix:`, `docs:`, `test:`, `chore:`, `refactor:` 등의 컨벤셔널 커밋 접두사를 사용하세요.
+
+## 근거
+
+- 메인라인 히스토리가 일관되게 컨벤셔널 커밋 제목을 사용합니다.
+- 릴리즈와 체인지로그 자동화가 읽기 쉬운 커밋 분류를 필요로 합니다.
+
+---
+id: everything-claude-code-commit-length
+trigger: "everything-claude-code에서 커밋 제목을 작성할 때"
+confidence: 0.8
+domain: git
+source: repo-curation
+source_repo: affaan-m/everything-claude-code
+---
+
+# Everything Claude Code 커밋 길이
+
+## 행동 지침
+
+커밋 제목은 저장소 기준인 약 70자에 맞게 간결하게 유지하세요.
+
+## 근거
+
+- 최근 히스토리가 ~50자가 아닌 ~70자 근처에 집중되어 있습니다.
+- 짧고 설명적인 제목은 릴리즈 노트와 PR 요약에서 잘 읽힙니다.
+
+---
+id: everything-claude-code-js-file-naming
+trigger: "everything-claude-code에서 새 JavaScript 또는 TypeScript 모듈을 만들 때"
+confidence: 0.85
+domain: code-style
+source: repo-curation
+source_repo: affaan-m/everything-claude-code
+---
+
+# Everything Claude Code JS 파일 이름 규칙
+
+## 행동 지침
+
+JavaScript와 TypeScript 모듈 파일명에는 camelCase를 사용하고, 스킬 또는 커맨드 디렉토리는 kebab-case를 유지하세요.
+
+## 근거
+
+- `scripts/`와 테스트 헬퍼 대부분이 camelCase 모듈 이름을 사용합니다.
+- `skills/`와 `commands/` 디렉토리는 일관되게 kebab-case를 사용합니다.
+
+---
+id: everything-claude-code-test-runner
+trigger: "everything-claude-code에서 테스트를 추가하거나 업데이트할 때"
+confidence: 0.9
+domain: testing
+source: repo-curation
+source_repo: affaan-m/everything-claude-code
+---
+
+# Everything Claude Code 테스트 러너
+
+## 행동 지침
+
+저장소의 기존 Node 기반 테스트 흐름을 사용하세요: 먼저 대상 `*.test.js` 파일을 실행하고, 더 넓은 검증에는 `node tests/run-all.js` 또는 `npm test`를 사용하세요.
+
+## 근거
+
+- 저장소는 `tests/run-all.js`를 중앙 테스트 오케스트레이터로 사용합니다.
+- 테스트 파일은 훅, CI, 통합 커버리지 전반에 걸쳐 `*.test.js` 패턴을 따릅니다.
+
+---
+id: everything-claude-code-hooks-change-set
+trigger: "everything-claude-code에서 훅 또는 훅 관련 동작을 수정할 때"
+confidence: 0.88
+domain: workflow
+source: repo-curation
+source_repo: affaan-m/everything-claude-code
+---
+
+# Everything Claude Code 훅 변경 집합
+
+## 행동 지침
+
+훅 스크립트, 해당 설정, 테스트, 사용자 대상 문서를 함께 업데이트하세요.
+
+## 근거
+
+- 훅 수정은 보통 `hooks/hooks.json`, `scripts/hooks/`, `tests/hooks/`, `tests/integration/`, `hooks/README.md`에 걸쳐 이루어집니다.
+- 부분적인 훅 변경은 리그레션과 오래된 문서의 흔한 원인입니다.
+
+---
+id: everything-claude-code-cross-platform-sync
+trigger: "ECC 플랫폼 전반에 사용자가 볼 수 있는 기능을 출시할 때"
+confidence: 0.9
+domain: workflow
+source: repo-curation
+source_repo: affaan-m/everything-claude-code
+---
+
+# Everything Claude Code 크로스 플랫폼 동기화
+
+## 행동 지침
+
+루트 저장소를 진실의 원천(source of truth)으로 취급하고, 기능이 실제로 존재하는 경우에만 `.cursor/`, `.codex/`, `.opencode/`, `.agents/`에 변경사항을 미러링하세요.
+
+## 근거
+
+- ECC는 겹치지만 동일하지 않은 파일을 가진 여러 플랫폼별 표면을 유지합니다.
+- 가장 안전한 워크플로우는 루트 먼저 작업한 후 명시적으로 동등성을 업데이트하는 것입니다.
+
+---
+id: everything-claude-code-release-sync
+trigger: "everything-claude-code의 릴리즈를 준비할 때"
+confidence: 0.86
+domain: workflow
+source: repo-curation
+source_repo: affaan-m/everything-claude-code
+---
+
+# Everything Claude Code 릴리즈 동기화
+
+## 행동 지침
+
+패키지 버전, 플러그인 매니페스트, 릴리즈 관련 문서를 게시 전에 동기화하세요.
+
+## 근거
+
+- 릴리즈 작업은 `package.json`, `.claude-plugin/*`, `.opencode/package.json`, 릴리즈 노트 내용에 걸쳐 있습니다.
+- 버전 불일치는 업데이트 경로 오류와 혼란스러운 설치 화면을 초래합니다.
+
+---
+id: everything-claude-code-learning-curation
+trigger: "everything-claude-code의 instincts를 가져오거나 발전시킬 때"
+confidence: 0.84
+domain: workflow
+source: repo-curation
+source_repo: affaan-m/everything-claude-code
+---
+
+# Everything Claude Code 학습 큐레이션
+
+## 행동 지침
+
+대량 생성되거나 중복되거나 모순되는 instincts보다 소수의 정확한 instincts를 선호하세요.
+
+## 근거
+
+- 자동 생성된 instinct 덤프는 규칙을 중복시키거나, 트리거를 너무 넓히거나, 플레이스홀더 감지기 출력을 보존할 수 있습니다.
+- 큐레이션된 instincts는 지속적인 학습 워크플로우에서 가져오고, 감사하고, 신뢰하기가 더 쉽습니다.

@@ -1,0 +1,10 @@
+# 탐색 역할: 읽기 전용, 빠른 응답 우선 → claude-haiku-4-5
+model = "claude-haiku-4-5-20251001"
+model_reasoning_effort = "medium"
+sandbox_mode = "read-only"
+
+developer_instructions = """
+탐색 모드를 유지하세요.
+실제 실행 경로를 추적하고, 파일과 심볼을 인용하되, 부모 에이전트가 요청하지 않는 한 수정 제안을 피하세요.
+광범위한 스캔보다 대상이 명확한 검색과 파일 읽기를 선호하세요.
+"""

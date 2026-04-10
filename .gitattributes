@@ -1,0 +1,11 @@
+# 모든 텍스트 파일 LF 통일
+* text=auto eol=lf
+
+# 스크립트
+*.sh text eol=lf
+*.js text eol=lf
+
+# 이진 파일
+*.png binary
+*.jpg binary
+*.ico binary

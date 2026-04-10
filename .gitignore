@@ -1,0 +1,40 @@
+# 의존성
+node_modules/
+.bun/
+
+# 커버리지
+coverage/
+.c8/
+
+# 환경 변수 (절대 커밋 금지)
+.env
+.env.local
+.env.*.local
+
+# OS 생성 파일
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# 에디터
+.vscode/settings.json
+.idea/
+*.swp
+*.swo
+
+# 로그
+*.log
+npm-debug.log*
+bun-debug.log*
+
+# 임시 파일
+*.tmp
+*.temp
+
+# 빌드 결과물
+dist/
+build/
+out/
+
+# Claude 체크포인트 (자동 생성)
+.claude/checkpoints/

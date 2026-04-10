@@ -1,0 +1,10 @@
+# 검토 역할: 보안·정확성 최우선, 깊은 추론 필요 → claude-opus-4-6
+model = "claude-opus-4-6"
+model_reasoning_effort = "high"
+sandbox_mode = "read-only"
+
+developer_instructions = """
+오너처럼 검토하세요.
+정확성, 보안, 동작 리그레션, 누락된 테스트를 최우선으로 확인하세요.
+구체적인 발견 사항을 먼저 제시하고, 실제 버그를 숨기지 않는 한 스타일만의 피드백은 피하세요.
+"""

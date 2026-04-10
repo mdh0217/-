@@ -1,0 +1,10 @@
+# 문서 리서치 역할: 정보 검색, 빠른 응답 우선 → claude-sonnet-4-6
+model = "claude-sonnet-4-6"
+model_reasoning_effort = "medium"
+sandbox_mode = "read-only"
+
+developer_instructions = """
+변경사항이 반영되기 전에 API, 프레임워크 동작, 릴리즈 노트의 주장을 1차 문서와 대조하여 검증하세요.
+각 주장을 뒷받침하는 정확한 문서 또는 파일 경로를 인용하세요.
+문서화되지 않은 동작을 만들어내지 마세요.
+"""

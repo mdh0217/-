@@ -1,0 +1,26 @@
+{
+  "name": "everything-claude-code-local",
+  "version": "1.0.0",
+  "description": "로컬 ECC(Everything Claude Code) 설정 및 워크플로우 번들",
+  "packageManager": "bun@1.2.0",
+  "engines": {
+    "node": ">=18"
+  },
+  "scripts": {
+    "test": "node tests/run-all.js",
+    "test:watch": "node --watch tests/run-all.js",
+    "coverage": "c8 node tests/run-all.js",
+    "lint": "eslint .",
+    "lint:fix": "eslint . --fix",
+    "lint:md": "markdownlint \"**/*.md\" --ignore node_modules --ignore .claude --ignore .codex --ignore .agents",
+    "lint:all": "bun run lint && bun run lint:md",
+    "setup": "node scripts/setup.js",
+    "sync:skills": "node scripts/sync-skills.js"
+  },
+  "devDependencies": {
+    "@eslint/js": "^9.0.0",
+    "c8": "^10.0.0",
+    "eslint": "^9.0.0",
+    "markdownlint-cli": "^0.43.0"
+  }
+}
