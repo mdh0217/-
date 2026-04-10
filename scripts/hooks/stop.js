@@ -19,10 +19,11 @@ const ROOT = process.cwd()
 
 exports.run = async function run(_rawInput) {
   // ── 1. 테스트 실행 ───────────────────────────────────────────────
+  // ECC_SKIP_TESTS=1 이면 재귀 실행 방지 (테스트 중 호출 시)
   const testRunner = path.join(ROOT, 'tests', 'run-all.js')
   const testsDir   = path.join(ROOT, 'tests')
 
-  if (fs.existsSync(testRunner)) {
+  if (fs.existsSync(testRunner) && process.env.ECC_SKIP_TESTS !== '1') {
     const testFiles = collectTestFiles(testsDir)
     if (testFiles.length > 0) {
       console.error(`[${HOOK_NAME}] 테스트 실행 중 (${testFiles.length}개)...`)
@@ -37,6 +38,8 @@ exports.run = async function run(_rawInput) {
     } else {
       console.error(`[${HOOK_NAME}] 테스트 파일 없음 — 건너뜀`)
     }
+  } else if (process.env.ECC_SKIP_TESTS === '1') {
+    console.error(`[${HOOK_NAME}] 테스트 건너뜀 (ECC_SKIP_TESTS=1)`)
   }
 
   // ── 2. 스킬 동기화 ──────────────────────────────────────────────

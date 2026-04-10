@@ -5,7 +5,9 @@
       "Bash(git add:*)",
       "Bash(git commit -m ':*)",
       "Bash(git config:*)",
-      "Bash(git commit -m 'chore: ECC 초기 설정 완료 \\(P0~P1\\):*)"
+      "Bash(git commit -m 'chore: ECC 초기 설정 완료 \\(P0~P1\\):*)",
+      "Bash(bun install:*)",
+      "Bash(npm install:*)"
     ]
   },
   "hooks": {
