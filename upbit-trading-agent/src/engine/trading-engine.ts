@@ -20,7 +20,7 @@ import {
   MAX_DCA_COUNT,
 } from './position-manager';
 import { Position, PositionEntry, SignalAnalysis } from '../types/index';
-import { notifyEngineStart, notifyBuy, notifySell } from '../notifications/discord';
+import { notifyEngineStart, notifyBuy, notifySell, notifyWarning, notifyDailyReport } from '../notifications/discord';
 import { DailyLossGuard } from '../core/daily-loss-guard';
 import { logger } from '../utils/logger';
 import { writeStatusFile, MarketStatus, SignalStrength } from '../utils/statusFile';
@@ -86,6 +86,13 @@ export class TradingEngine {
   /** 최근 알림을 보낸 포지션 ID → 타임스탬프 (중복 알림 방지, 10초 쿨다운) */
   private readonly recentNotifications = new Map<number, number>();
   private static readonly NOTIFY_COOLDOWN_MS = 10_000;
+
+  /** 경고 알림 중복 방지 (사유 키 → 마지막 발송 시각, 10분 쿨다운) */
+  private readonly warningSentAt = new Map<string, number>();
+  private static readonly WARNING_COOLDOWN_MS = 10 * 60_000;
+
+  /** 일별 리포트 중복 방지 (KST 날짜 문자열) */
+  private lastDailyReportDate = '';
 
   constructor(
     private readonly client: UpbitClient,
@@ -206,6 +213,9 @@ export class TradingEngine {
             `연속 타임아웃 ${this.consecutiveTimeouts}회 — ` +
             `${COOLDOWN_MS / 60_000}분 쿨다운 시작`;
           logger.warn(`[쿨다운] ${coolMsg}`);
+          if (this.canSendWarning('timeout_cooldown')) {
+            void notifyWarning({ kind: 'timeout_cooldown', detail: coolMsg });
+          }
           await sleep(COOLDOWN_MS);
           this.consecutiveTimeouts = 0;
           logger.info(`[재가동] 쿨다운 종료 — 루프를 재시작합니다`);
@@ -236,7 +246,16 @@ export class TradingEngine {
     const reason  = marketBlock.blocked  ? marketBlock.reason
                   : dailyGuard.breached  ? `일일 손실 한도 도달 (${(dailyGuard.lossRate * 100).toFixed(2)}%)`
                   : '';
-    if (blocked) { logger.warn(`[차단] #${this.iteration} 신규 매수 차단 — ${reason}`); }
+    if (blocked) {
+      logger.warn(`[차단] #${this.iteration} 신규 매수 차단 — ${reason}`);
+      const warnKey = marketBlock.blocked ? 'btc_drop' : 'daily_loss';
+      if (this.canSendWarning(warnKey)) {
+        void notifyWarning({
+          kind:   marketBlock.blocked ? 'btc_drop' : 'daily_loss',
+          detail: reason,
+        });
+      }
+    }
 
     if (signal.aborted) return;
 
@@ -286,6 +305,29 @@ export class TradingEngine {
 
     // ── DB 배치 저장 (사이클 당 1회) ────────────────────────────────────────
     this.db.flush();
+
+    // ── 일별 리포트 (KST 08:00 이후 첫 사이클) ───────────────────────────────
+    if (!signal.aborted) {
+      const kstNow  = new Date(Date.now() + 9 * 60 * 60 * 1000);
+      const kstDate = kstNow.toISOString().slice(0, 10);
+      const kstHour = kstNow.getUTCHours();
+      if (kstHour >= 8 && kstDate !== this.lastDailyReportDate) {
+        this.lastDailyReportDate = kstDate;
+        const todayStats = this.db.getTodayStats();
+        const summary    = this.db.getSummary();
+        const krwBal2    = this.db.getBalance('KRW');
+        const invested2  = this.db.getAllOpenPositions().reduce((s, p) => s + p.total_invested, 0);
+        void notifyDailyReport({
+          krwBalance:    krwBal2?.available ?? 0,
+          totalInvested: invested2,
+          todayTrades:   todayStats.trades,
+          todayPnl:      todayStats.pnl,
+          todayWins:     todayStats.wins,
+          allTimeTrades: summary.totalTrades,
+          allTimePnl:    summary.totalPnl,
+        });
+      }
+    }
   }
 
   // ── BTC 하락장 방어 ───────────────────────────────────────────────────────
@@ -483,6 +525,14 @@ export class TradingEngine {
     const now  = Date.now();
     if (last !== undefined && now - last < TradingEngine.NOTIFY_COOLDOWN_MS) return false;
     this.recentNotifications.set(positionId, now);
+    return true;
+  }
+
+  private canSendWarning(key: string): boolean {
+    const last = this.warningSentAt.get(key);
+    const now  = Date.now();
+    if (last !== undefined && now - last < TradingEngine.WARNING_COOLDOWN_MS) return false;
+    this.warningSentAt.set(key, now);
     return true;
   }
 

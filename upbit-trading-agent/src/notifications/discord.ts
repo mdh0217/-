@@ -148,6 +148,69 @@ export async function notifySell(opts: {
   });
 }
 
+/** 경고 알림 — BTC 차단 / 일일 손실 한도 / 연속 타임아웃 쿨다운 */
+export async function notifyWarning(opts: {
+  kind:   'btc_drop' | 'daily_loss' | 'timeout_cooldown';
+  detail: string;
+}): Promise<void> {
+  const meta: Record<string, { title: string; color: number }> = {
+    btc_drop:         { title: '⚠️ BTC 급락 — 신규 매수 차단',       color: 0xFEE75C },
+    daily_loss:       { title: '🛑 일일 손실 한도 도달 — 매수 차단', color: 0xED4245 },
+    timeout_cooldown: { title: '⏸️ 연속 타임아웃 — 쿨다운 진입',    color: 0xFEE75C },
+  };
+  const { title, color } = meta[opts.kind]!;
+  await send({
+    embeds: [{
+      title,
+      color,
+      description: opts.detail,
+      footer: { text: now() },
+    }],
+  });
+}
+
+/** 일별 리포트 — KST 08:00 이후 첫 사이클에 발송 */
+export async function notifyDailyReport(opts: {
+  krwBalance:    number;
+  totalInvested: number;
+  todayTrades:   number;
+  todayPnl:      number;
+  todayWins:     number;
+  allTimeTrades: number;
+  allTimePnl:    number;
+}): Promise<void> {
+  const todayLosses = opts.todayTrades - opts.todayWins;
+  const pnlSign     = opts.todayPnl >= 0 ? '+' : '';
+  const allSign     = opts.allTimePnl >= 0 ? '+' : '';
+
+  await send({
+    embeds: [{
+      title:  '📅 일별 리포트',
+      color:  opts.todayPnl >= 0 ? 0x57F287 : 0xED4245,
+      fields: [
+        {
+          name:   '오늘 거래',
+          value:  opts.todayTrades === 0
+            ? '거래 없음'
+            : `${opts.todayTrades}회 (${opts.todayWins}승 ${todayLosses}패)  ${pnlSign}${krw(opts.todayPnl)}`,
+          inline: false,
+        },
+        {
+          name:   '누적 손익',
+          value:  `${opts.allTimeTrades}회  ${allSign}${krw(opts.allTimePnl)}`,
+          inline: false,
+        },
+        {
+          name:   '현재 자산',
+          value:  buildAssetSummary(opts.krwBalance, opts.totalInvested),
+          inline: false,
+        },
+      ],
+      footer: { text: `리포트 기준: ${now()}` },
+    }],
+  });
+}
+
 /** 셧다운 알림 (정상 종료 / 에러 종료 구분) */
 export async function notifyShutdown(opts: {
   kind:       'signal' | 'error';

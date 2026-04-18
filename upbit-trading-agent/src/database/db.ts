@@ -353,6 +353,24 @@ export class DatabaseManager {
     }
   }
 
+  /** KST 기준 오늘 하루 청산 통계 (일별 리포트용) */
+  getTodayStats(): { trades: number; pnl: number; wins: number } {
+    const kstOffsetMs = 9 * 60 * 60 * 1000;
+    const kstDate     = new Date(Date.now() + kstOffsetMs).toISOString().slice(0, 10);
+    const sinceUtc    = new Date(`${kstDate}T00:00:00+09:00`).toISOString();
+    const results = this.db.exec(
+      "SELECT COUNT(*), COALESCE(SUM(pnl),0), COALESCE(SUM(CASE WHEN pnl>0 THEN 1 ELSE 0 END),0) FROM positions WHERE status='closed' AND closed_at >= ?",
+      [sinceUtc],
+    );
+    const row = results[0]?.values[0];
+    if (!row) return { trades: 0, pnl: 0, wins: 0 };
+    return {
+      trades: (row[0] as number) || 0,
+      pnl:    (row[1] as number) || 0,
+      wins:   (row[2] as number) || 0,
+    };
+  }
+
   /** 전체 손익 통계 */
   getSummary(): { totalTrades: number; totalPnl: number; winRate: number } {
     const results = this.db.exec(
