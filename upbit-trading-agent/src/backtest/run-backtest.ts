@@ -171,12 +171,15 @@ async function main(): Promise<void> {
     }
 
     const variants: Array<{ label: string; cfg: BacktestConfig }> = [
-      { label: '① 기본 (현재 봇 설정)',          cfg: { ...config } },
-      { label: '② 최소변동폭 0.5% 필터',         cfg: { ...config, minRangeRate: 0.005 } },
-      { label: '③ 최소변동폭 1.0% 필터',         cfg: { ...config, minRangeRate: 0.010 } },
-      { label: '④ BTC 차단 완화 (-3%)',          cfg: { ...config, btcDropOverride: -0.03 } },
-      { label: '⑤ BTC MA 차단 재적용 (확인용)',  cfg: { ...config, disableBtcMaBlock: false } },
-      { label: '⑥ 완화 + 변동폭 0.5% 조합',     cfg: { ...config, btcDropOverride: -0.03, minRangeRate: 0.005 } },
+      { label: '① 기본 (현재 봇 설정)',                cfg: { ...config } },
+      { label: '② 최소변동폭 0.5% 필터',               cfg: { ...config, minRangeRate: 0.005 } },
+      { label: '③ 최소변동폭 1.0% 필터',               cfg: { ...config, minRangeRate: 0.010 } },
+      { label: '④ BTC 차단 완화 (-3%)',                cfg: { ...config, btcDropOverride: -0.03 } },
+      { label: '⑤ BTC MA 차단 재적용 (확인용)',        cfg: { ...config, disableBtcMaBlock: false } },
+      { label: '⑥ 완화 + 변동폭 0.5% 조합',           cfg: { ...config, btcDropOverride: -0.03, minRangeRate: 0.005 } },
+      { label: '⑦ 트레일링 구버전 (+3% 활성/-1.5%)',  cfg: { ...config, trailingActivateOverride: 0.03,  trailingTriggerOverride: 0.015 } },
+      { label: '⑧ 트레일링 긴축 (+2%/-2%)',           cfg: { ...config, trailingActivateOverride: 0.02,  trailingTriggerOverride: 0.02  } },
+      { label: '⑨ DCA 비활성화',                      cfg: { ...config, disableDca: true } },
     ];
 
     console.log('\n[2/3] 변형별 시뮬레이션 실행 중...\n');

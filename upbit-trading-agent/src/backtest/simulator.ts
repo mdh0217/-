@@ -214,6 +214,10 @@ export class BacktestSimulator {
     startDate:        string,
     endDate:          string,
   ): SimRunResult {
+    // ── config override 적용 ─────────────────────────────────────────────
+    const trailingActivate = config.trailingActivateOverride ?? TRAILING_ACTIVATE;
+    const trailingTrigger  = config.trailingTriggerOverride  ?? TRAILING_TRIGGER;
+
     // ── 사전 인덱싱 (O(n) 전처리 → O(1) 조회) ────────────────────────────
 
     const dailyIdxMap = new Map<string, Map<string, number>>();
@@ -350,7 +354,7 @@ export class BacktestSimulator {
 
             // ② 트레일링 스탑 ────────────────────────────────────────────────
             if (!pos.trailingActive) {
-              if (bar.high >= pos.avgPrice * (1 + TRAILING_ACTIVATE)) {
+              if (bar.high >= pos.avgPrice * (1 + trailingActivate)) {
                 pos.trailingActive = true;
                 pos.peakPrice      = bar.high;
               }
@@ -358,7 +362,7 @@ export class BacktestSimulator {
 
             if (pos.trailingActive) {
               if (bar.high > pos.peakPrice) pos.peakPrice = bar.high;
-              const triggerPrice = pos.peakPrice * (1 - TRAILING_TRIGGER);
+              const triggerPrice = pos.peakPrice * (1 - trailingTrigger);
 
               if (bar.low <= triggerPrice) {
                 const exitPrice = triggerPrice;
@@ -393,7 +397,7 @@ export class BacktestSimulator {
             }
 
             // ③ DCA: 직전 진입가 대비 -2.5% 하락 시 추가 매수 ────────────────
-            if (pos.dcaLevel < MAX_DCA_COUNT) {
+            if (!config.disableDca && pos.dcaLevel < MAX_DCA_COUNT) {
               const dcaTrigger = pos.lastEntryPrice * (1 - DCA_TRIGGER_RATE);
 
               if (bar.low <= dcaTrigger) {
