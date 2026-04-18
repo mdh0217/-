@@ -1,0 +1,38 @@
+# ===== 보안: 절대 커밋 금지 =====
+.env
+.env.local
+.env.*.local
+*.pem
+*.key
+secrets/
+
+# ===== 빌드 결과물 =====
+dist/
+build/
+
+# ===== 런타임 데이터 =====
+data/*.db
+data/*.db-journal
+data/
+logs/*.log
+logs/*.json
+current-status.txt
+
+# ===== Node.js =====
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.npm
+
+# ===== macOS =====
+.DS_Store
+.AppleDouble
+.LSOverride
+._*
+
+# ===== IDE =====
+.vscode/
+.idea/
+*.swp
+*.swo

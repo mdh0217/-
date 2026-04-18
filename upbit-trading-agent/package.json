@@ -1,0 +1,47 @@
+{
+  "name": "upbit-trading-agent",
+  "version": "0.1.0",
+  "description": "Upbit 24h Autonomous Trading Agent - Larry Williams Volatility Breakout + AI Optimization",
+  "main": "dist/index.js",
+  "scripts": {
+    "build": "tsc --project tsconfig.json",
+    "dev": "ts-node --project tsconfig.json src/index.ts",
+    "start": "node dist/index.js",
+    "test:connectivity": "ts-node --project tsconfig.json src/scripts/connectivity-test.ts",
+    "paper": "ts-node --project tsconfig.json src/scripts/run-paper-trading.ts",
+    "paper:loop": "cross-env LOOP=true INTERVAL_SEC=60 ts-node --project tsconfig.json src/scripts/run-paper-trading.ts",
+    "report": "ts-node --project tsconfig.json src/scripts/report.ts",
+    "monitor": "node scripts/dashboard.js",
+    "backtest": "ts-node --project tsconfig.json src/backtest/run-backtest.ts",
+    "backtest:optimize": "ts-node --project tsconfig.json src/backtest/run-backtest.ts --optimize",
+    "backtest:n10": "ts-node --project tsconfig.json src/backtest/run-backtest.ts --n 10",
+    "backtest:n20": "ts-node --project tsconfig.json src/backtest/run-backtest.ts --n 20",
+    "backtest:n55": "ts-node --project tsconfig.json src/backtest/run-backtest.ts --n 55",
+    "typecheck": "tsc --noEmit",
+    "clean": "rm -rf dist"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "dependencies": {
+    "axios": "^1.7.2",
+    "dotenv": "^16.4.5",
+    "jsonwebtoken": "^9.0.2",
+    "sql.js": "^1.10.3",
+    "uuid": "^10.0.0",
+    "winston": "^3.19.0",
+    "winston-daily-rotate-file": "^5.0.0",
+    "ws": "^8.18.0"
+  },
+  "devDependencies": {
+    "@types/jsonwebtoken": "^9.0.6",
+    "@types/node": "^20.14.0",
+    "@types/sql.js": "^1.4.11",
+    "@types/uuid": "^10.0.0",
+    "@types/winston": "^2.4.4",
+    "@types/ws": "^8.5.11",
+    "cross-env": "^7.0.3",
+    "ts-node": "^10.9.2",
+    "typescript": "^5.4.5"
+  }
+}

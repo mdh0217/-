@@ -1,0 +1,55 @@
+services:
+  trading-agent:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      # Apple Silicon(M1/M2/M3): linux/arm64
+      # Intel Mac / 서버 배포: linux/amd64
+      # 멀티 플랫폼 배포 시 buildx 사용 권장
+      platforms:
+        - linux/arm64
+    image: upbit-trading-agent:latest
+    container_name: upbit-agent
+    restart: unless-stopped
+
+    # ── 환경변수: .env 파일에서 로드 (절대 docker-compose.yml에 키 직접 기재 금지) ──
+    env_file:
+      - .env
+
+    # ── 볼륨: 데이터베이스 및 로그 영속성 ──────────────────────
+    volumes:
+      - ./data:/app/data
+      - ./logs:/app/logs
+
+    # ── 포트: 헬스체크 엔드포인트 ───────────────────────────────
+    ports:
+      - "3000:3000"
+
+    # ── 리소스 제한 (24시간 안정 운영) ─────────────────────────
+    deploy:
+      resources:
+        limits:
+          cpus: '0.5'
+          memory: 512M
+        reservations:
+          cpus: '0.1'
+          memory: 128M
+
+    # ── 헬스체크 ──────────────────────────────────────────────
+    healthcheck:
+      test: ["CMD", "node", "-e", "require('http').get('http://localhost:3000/health',r=>process.exit(r.statusCode===200?0:1)).on('error',()=>process.exit(1))"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+
+    # ── 로깅: 로그 파일 로테이션으로 디스크 보호 ─────────────────
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "5"
+
+    # ── 시스템 시간 동기화 (크론 기반 전략에 필수) ──────────────
+    environment:
+      - TZ=Asia/Seoul
