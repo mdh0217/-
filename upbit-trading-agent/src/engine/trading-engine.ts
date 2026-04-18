@@ -32,7 +32,6 @@ const COOLDOWN_TIMEOUT_COUNT = ENGINE.COOLDOWN_TIMEOUT_COUNT;
 const COOLDOWN_MS            = ENGINE.COOLDOWN_MS;
 const STALE_DATA_MS          = ENGINE.STALE_DATA_MS;
 const SPREAD_THRESHOLD       = TRADING.SPREAD_THRESHOLD;
-const SLIPPAGE_TOLERANCE     = TRADING.SLIPPAGE_TOLERANCE;
 const STOP_LOSS_RATE         = TRADING.STOP_LOSS_RATE;
 const SNAPSHOTS_DIR          = path.resolve(process.cwd(), 'data', 'snapshots');
 
@@ -355,71 +354,51 @@ export class TradingEngine {
 
     if (buyBlocked || signal.signalStrength === 'none') return signal.signalStrength;
 
-    // STEP 1~4: 신선도 · 스프레드 · 슬리피지 통합 검증
-    const validated = await this.validateAndGetPrice(market, tickerPrice, tickerAgeMs, signal);
-    if (!validated.ok) return signal.signalStrength;
-
-    // STEP 5: 거래량 필터 (직전 20분 평균의 2배)
-    const vol = await this.checkMinuteVolumeFilter(market);
-    if (!vol.pass) {
-      if (vol.targetVol > 0) {
-        logger.warn(
-          `[SKIP] ${market} 거래량 조건 미충족 (현재: ${Math.round(vol.currentVol)} / 기준: ${Math.round(vol.targetVol)})`,
-        );
-      }
-      return signal.signalStrength;
-    }
+    // 신선도 · 스프레드 검증 (호가창 1회 조회)
+    const ok = await this.validateEntry(market, tickerPrice, tickerAgeMs);
+    if (!ok) return signal.signalStrength;
 
     this.evaluateEntry(signal);
     return signal.signalStrength;
   }
 
-  // ── 통합 시세 검증 (STEP 1~4) ────────────────────────────────────────────
-  //
-  //   STEP 1: 티커 오래됨(>2분) → 호가창 교차 검증 후 ask_price[0] 사용
-  //   STEP 2: 스프레드 > 1.2% → 스킵
-  //   STEP 3: ORDER_KRW 기준 VWAP 슬리피지 시뮬레이션
-  //   STEP 4: avgFillPrice > breakoutTargetPrice × 1.005 → 스킵
+  // ── 진입 시세 검증 (호가창 1회 조회) ────────────────────────────────────
+  //   STEP 1: 티커 오래됨(>2분) → 호가창 신선도 교차 검증
+  //   STEP 2: 스프레드 > 1.5% → 이상 시장으로 판단, 스킵
 
-  private async validateAndGetPrice(
+  private async validateEntry(
     market: string,
     tickerPrice: number,
     tickerAgeMs: number,
-    signal: SignalAnalysis,
-  ): Promise<{ ok: true; price: number } | { ok: false }> {
-    // 호가창은 STEP 1·2·3 모두 필요 → 1회만 호출
+  ): Promise<boolean> {
     let obData;
     try {
       const books = await this.client.getOrderbook([market]);
       obData = books[0];
     } catch (err) {
       logger.warn(`[SKIP] ${market}: 호가창 조회 실패 — ${(err as Error).message}`);
-      return { ok: false };
+      return false;
     }
 
     if (obData === undefined || obData.orderbook_units.length === 0) {
       logger.warn(`[SKIP] ${market}: 호가창 비어있음`);
-      return { ok: false };
+      return false;
     }
 
-    // ── STEP 1: 티커 신선도 ──────────────────────────────────────────────
-    let currentPrice = tickerPrice;
+    // STEP 1: 티커 신선도 — 오래됐으면 호가창도 함께 확인
     if (tickerAgeMs > STALE_DATA_MS) {
       const obAgeMs = Date.now() - obData.timestamp;
       if (obAgeMs > STALE_DATA_MS) {
-        logger.warn(
-          `[SKIP] ${market}: 호가창도 오래됨 (${Math.round(obAgeMs / 1000)}초 전)`,
-        );
-        return { ok: false };
+        logger.warn(`[SKIP] ${market}: 호가창도 오래됨 (${Math.round(obAgeMs / 1000)}초 전)`);
+        return false;
       }
-      currentPrice = obData.orderbook_units[0]!.ask_price;
       logger.info(
         `[검증] ${market}: 티커 오래됨(${Math.round(tickerAgeMs / 1000)}초)` +
-        ` → 호가창 기준가 사용 (${currentPrice.toLocaleString('ko-KR')}원)`,
+        ` — 호가창 신선도 확인 완료 (${obData.orderbook_units[0]!.ask_price.toLocaleString('ko-KR')}원)`,
       );
     }
 
-    // ── STEP 2: 스프레드 방어 ────────────────────────────────────────────
+    // STEP 2: 스프레드 방어
     const unit0  = obData.orderbook_units[0]!;
     const spread = (unit0.ask_price - unit0.bid_price) / unit0.bid_price;
     if (spread > SPREAD_THRESHOLD) {
@@ -427,93 +406,10 @@ export class TradingEngine {
         `[SKIP] ${market}: 스프레드 과대` +
         ` (${(spread * 100).toFixed(2)}% > ${(SPREAD_THRESHOLD * 100).toFixed(1)}%)`,
       );
-      return { ok: false };
+      return false;
     }
 
-    // ── STEP 3: 슬리피지 시뮬레이션 (VWAP) ─────────────────────────────
-    const bal      = this.db.getBalance('KRW');
-    const krwAvail = bal?.available ?? 0;
-    const orderKrw = Math.floor(krwAvail * signal.recommendedPositionRate);
-
-    if (orderKrw < 5_000) return { ok: false }; // 잔고 부족 — 무음 스킵
-
-    let remainKrw   = orderKrw;
-    let totalVolume = 0;
-    let totalCost   = 0;
-
-    for (const unit of obData.orderbook_units) {
-      if (remainKrw <= 0) break;
-      const available = unit.ask_price * unit.ask_size;
-      const fill      = Math.min(remainKrw, available);
-      totalVolume    += fill / unit.ask_price;
-      totalCost      += fill;
-      remainKrw      -= fill;
-    }
-
-    if (totalVolume <= 0) {
-      logger.warn(`[SKIP] ${market}: 호가창 물량 부족`);
-      return { ok: false };
-    }
-
-    // ── STEP 4: 슬리피지 한도 판단 ──────────────────────────────────────
-    const avgFillPrice  = totalCost / totalVolume;
-    const slippageLimit = signal.breakoutTargetPrice * SLIPPAGE_TOLERANCE;
-
-    if (avgFillPrice > slippageLimit) {
-      logger.warn(
-        `[SKIP] ${market}: 슬리피지 초과` +
-        ` (예상: ${Math.round(avgFillPrice).toLocaleString('ko-KR')} /` +
-        ` 한도: ${Math.round(slippageLimit).toLocaleString('ko-KR')})`,
-      );
-      return { ok: false };
-    }
-
-    return { ok: true, price: currentPrice };
-  }
-
-  // ── 1분봉 거래량 필터 ────────────────────────────────────────────────────────
-  //   fetch N+1개: index 0 = 현재 진행 중 캔들, index 1~N = 직전 N분 완성 캔들
-
-  private async checkMinuteVolumeFilter(
-    market: string,
-  ): Promise<{ pass: boolean; currentVol: number; targetVol: number }> {
-    const FAIL = { pass: false, currentVol: 0, targetVol: 0 };
-    const historyMinutes = TRADING.VOLUME_HISTORY_MINUTES;
-    const fetchCount = historyMinutes + 1;
-
-    let candles;
-    try {
-      candles = await this.client.getMinuteCandles(market, 1, fetchCount);
-    } catch (err) {
-      logger.warn(`[SKIP] ${market}: 1분봉 조회 실패 — ${(err as Error).message}`);
-      return FAIL;
-    }
-
-    if (candles.length < fetchCount) {
-      logger.warn(`[SKIP] ${market}: 데이터 부족으로 거래량 계산 불가 (${candles.length}/${fetchCount})`);
-      return FAIL;
-    }
-
-    // 직전 N분 캔들 거래량 유효성 검증 (NaN · Infinity · 음수 방어)
-    const historicalVols = candles.slice(1, fetchCount).map((c) => c.candle_acc_trade_volume);
-    const hasInvalid = historicalVols.some((v) => !Number.isFinite(v) || v < 0);
-    if (hasInvalid) {
-      logger.warn(`[SKIP] ${market}: 데이터 부족으로 거래량 계산 불가 (캔들 값 이상)`);
-      return FAIL;
-    }
-
-    const avgVol = historicalVols.reduce((s, v) => s + v, 0) / historyMinutes;
-
-    // 평균이 0이면 거래 없는 종목 — 계산 불가
-    if (avgVol <= 0) {
-      logger.warn(`[SKIP] ${market}: 데이터 부족으로 거래량 계산 불가 (평균 거래량 0)`);
-      return FAIL;
-    }
-
-    const currentVol = candles[0]!.candle_acc_trade_volume;
-    const targetVol  = avgVol * TRADING.VOLUME_FILTER_MULTIPLIER;
-
-    return { pass: currentVol > targetVol, currentVol, targetVol };
+    return true;
   }
 
   // ── 포지션 관리 ───────────────────────────────────────────────────────────

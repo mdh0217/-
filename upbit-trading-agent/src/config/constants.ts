@@ -29,9 +29,6 @@ export const TRADING = {
   /** 호가 스프레드 허용 상한 1.5% */
   SPREAD_THRESHOLD: 0.015,
 
-  /** 슬리피지 허용 배수 (목표가 × 1.01) */
-  SLIPPAGE_TOLERANCE: 1.01,
-
   /** BTC 1시간 등락률이 이 이하면 신규 매수 차단 */
   BTC_DROP_THRESHOLD: -0.015,
 
@@ -53,15 +50,6 @@ export const TRADING = {
    * → 3% × 0.80 = 2.4% 손절
    */
   DCA_STOP_FACTOR: 0.80,
-
-  /**
-   * 거래량 필터 배수
-   * 현재 1분봉 거래량이 직전 N분 평균의 이 배수 이상이어야 진입
-   */
-  VOLUME_FILTER_MULTIPLIER: 1.15,
-
-  /** 거래량 필터 기준 시간(분) — 직전 이 분 수의 완성 캔들 평균 사용 */
-  VOLUME_HISTORY_MINUTES: 20,
 
   // ── 포지션 비율 ──────────────────────────────────────────────────────────────
 
