@@ -23,7 +23,8 @@ const child = spawn(
       LOOP:         'true',
       INTERVAL_SEC: process.env['INTERVAL_SEC'] ?? '60',
     },
-    shell: false,
+    shell:       false,
+    windowsHide: true,
   },
 );
 
