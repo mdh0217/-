@@ -59,6 +59,21 @@ export interface BacktestConfig {
    * true → MA5<MA20 조건 무시 (기본 false)
    */
   disableBtcMaBlock?: boolean;
+
+  /** 트레일링 스탑 활성화 임계값 override (기본: TRADING.TRAILING_ACTIVATE_RATE) */
+  trailingActivateOverride?: number;
+
+  /** 트레일링 스탑 트리거 폭 override (기본: TRADING.TRAILING_TRIGGER_RATE) */
+  trailingTriggerOverride?: number;
+
+  /** DCA 비활성화 (true → DCA 없이 손절만) */
+  disableDca?: boolean;
+
+  /**
+   * 동시 보유 포지션 최대 수 (기본: 무제한)
+   * 라이브 봇 env.maxPositions=3 을 시뮬레이션하려면 3 지정
+   */
+  maxPositions?: number;
 }
 
 /** 시뮬레이션 포지션 상태 (내부용) */

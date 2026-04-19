@@ -193,6 +193,10 @@ interface MarketState {
 export interface SimRunResult {
   trades: SimulatedTrade[];
   equityCurve: EquityPoint[];
+  /** maxPositions 제한으로 스킵된 신호 수 */
+  skippedByPositionCap: number;
+  /** 일별 최대 동시 포지션 수 분포 { count → 일수 } */
+  simultaneousPositionDist: Map<number, number>;
 }
 
 export class BacktestSimulator {
@@ -245,6 +249,11 @@ export class BacktestSimulator {
     const trades:        SimulatedTrade[] = [];
     const equityCurve:   EquityPoint[]   = [];
     const allDays      = getAllDaysInRange(startDate, endDate);
+    const maxPositions = config.maxPositions ?? Infinity;
+
+    // 포지션 상한 추적
+    let skippedByPositionCap              = 0;
+    const simultaneousPositionDist        = new Map<number, number>();
 
     // 마켓별 쿨다운 상태 (v2 신규)
     const marketStates = new Map<string, MarketState>();
@@ -428,6 +437,13 @@ export class BacktestSimulator {
 
           } else if (signal !== null) {
             // ④ 신규 진입 시도 ───────────────────────────────────────────────
+            // 동시 포지션 상한 체크
+            if (positions.size >= maxPositions) {
+              skippedByPositionCap++;
+              signal = null;
+              continue;
+            }
+
             const { breakoutTargetPrice, signalStrength, recommendedPositionRate } = signal;
 
             if (bar.high >= breakoutTargetPrice) {
@@ -505,6 +521,10 @@ export class BacktestSimulator {
       }
       equityCurve.push({ dateKst, equity });
 
+      // 일별 동시 포지션 수 분포 기록
+      const cnt = positions.size;
+      simultaneousPositionDist.set(cnt, (simultaneousPositionDist.get(cnt) ?? 0) + 1);
+
     } // end day loop
 
     // ── 종료 시 미청산 포지션 강제 청산 ──────────────────────────────────────
@@ -532,7 +552,7 @@ export class BacktestSimulator {
       krwAvailable += received;
     }
 
-    return { trades, equityCurve };
+    return { trades, equityCurve, skippedByPositionCap, simultaneousPositionDist };
   }
 
   // ── BTC 하락 감지 ─────────────────────────────────────────────────────────

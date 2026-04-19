@@ -180,29 +180,53 @@ async function main(): Promise<void> {
       { label: '⑦ 트레일링 구버전 (+3% 활성/-1.5%)',  cfg: { ...config, trailingActivateOverride: 0.03,  trailingTriggerOverride: 0.015 } },
       { label: '⑧ 트레일링 긴축 (+2%/-2%)',           cfg: { ...config, trailingActivateOverride: 0.02,  trailingTriggerOverride: 0.02  } },
       { label: '⑨ DCA 비활성화',                      cfg: { ...config, disableDca: true } },
+      { label: '⑩ 포지션 상한 3개 (라이브 봇 동일)', cfg: { ...config, maxPositions: 3 } },
+      { label: '⑪ 포지션 상한 4개',                   cfg: { ...config, maxPositions: 4 } },
+      { label: '⑫ 포지션 상한 5개',                   cfg: { ...config, maxPositions: 5 } },
     ];
 
     console.log('\n[2/3] 변형별 시뮬레이션 실행 중...\n');
 
-    const results: Array<{ label: string; m: ReturnType<typeof calcMetrics> }> = [];
+    const results: Array<{
+      label: string;
+      m: ReturnType<typeof calcMetrics>;
+      skipped: number;
+      dist: Map<number, number>;
+    }> = [];
 
     for (const { label, cfg } of variants) {
-      const { trades, equityCurve } = simulator.run(
+      const { trades, equityCurve, skippedByPositionCap, simultaneousPositionDist } = simulator.run(
         marketDailyBars, marketHourlyBars, btcHourlyBars, cfg, startDate, endDate,
       );
       const m = calcMetrics(cfg.n, cfg.markets, 'test', startDate, endDate,
         cfg.initialCapital, trades, equityCurve);
-      results.push({ label, m });
+      results.push({ label, m, skipped: skippedByPositionCap, dist: simultaneousPositionDist });
 
-      const icon = m.totalReturnPct >= 0 ? ANSI.green : ANSI.red;
+      const icon   = m.totalReturnPct >= 0 ? ANSI.green : ANSI.red;
+      const skipTxt = skippedByPositionCap > 0 ? `  스킵=${skippedByPositionCap}회` : '';
       console.log(
-        `  ${label.padEnd(28)}` +
+        `  ${label.padEnd(32)}` +
         `  수익률=${icon}${m.totalReturnPct >= 0 ? '+' : ''}${m.totalReturnPct.toFixed(2)}%${ANSI.reset}` +
         `  샤프=${m.sharpeRatio.toFixed(2).padStart(5)}` +
         `  MDD=${m.maxDrawdownPct.toFixed(2)}%` +
         `  거래=${String(m.tradeCount).padStart(3)}회` +
-        `  승률=${m.winRate.toFixed(0)}%`,
+        `  승률=${m.winRate.toFixed(0)}%` +
+        skipTxt,
       );
+    }
+
+    // ── 동시 포지션 분포 출력 (① 기본 기준) ──────────────────────────────────
+    const baseDist = results[0]?.dist;
+    if (baseDist) {
+      console.log('\n  [동시 포지션 분포 — ① 기본 설정 기준]');
+      const totalDays = [...baseDist.values()].reduce((s, v) => s + v, 0);
+      [...baseDist.entries()]
+        .sort((a, b) => a[0] - b[0])
+        .forEach(([cnt, days]) => {
+          const pct = ((days / totalDays) * 100).toFixed(1);
+          const bar = '█'.repeat(Math.round(days / totalDays * 30));
+          console.log(`    동시 ${cnt}개: ${String(days).padStart(3)}일 (${pct.padStart(4)}%) ${bar}`);
+        });
     }
 
     console.log('\n[3/3] 최고 샤프 기준 상세 결과');
