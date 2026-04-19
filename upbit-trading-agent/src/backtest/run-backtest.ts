@@ -180,7 +180,7 @@ async function main(): Promise<void> {
       { label: '⑦ 트레일링 구버전 (+3% 활성/-1.5%)',  cfg: { ...config, trailingActivateOverride: 0.03,  trailingTriggerOverride: 0.015 } },
       { label: '⑧ 트레일링 긴축 (+2%/-2%)',           cfg: { ...config, trailingActivateOverride: 0.02,  trailingTriggerOverride: 0.02  } },
       { label: '⑨ DCA 비활성화',                      cfg: { ...config, disableDca: true } },
-      { label: '⑩ 포지션 상한 3개 (라이브 봇 동일)', cfg: { ...config, maxPositions: 3 } },
+      { label: '⑩ 포지션 상한 3개',                   cfg: { ...config, maxPositions: 3 } },
       { label: '⑪ 포지션 상한 4개',                   cfg: { ...config, maxPositions: 4 } },
       { label: '⑫ 포지션 상한 5개',                   cfg: { ...config, maxPositions: 5 } },
     ];
