@@ -41,6 +41,7 @@ const TRAILING_ACTIVATE  = TRADING.TRAILING_ACTIVATE_RATE;
 const TRAILING_TRIGGER   = TRADING.TRAILING_TRIGGER_RATE;
 const BTC_DROP_THRESHOLD = TRADING.BTC_DROP_THRESHOLD;
 const DCA_STOP_FACTOR    = TRADING.DCA_STOP_FACTOR;
+const REGIME_MA_PERIOD   = TRADING.REGIME_MA_PERIOD;
 const MIN_ORDER_KRW      = 5_500;
 
 // ── v2 신규 상수 (constants.ts 참조 — 실제 봇과 항상 동기화) ──────────────────
@@ -50,12 +51,6 @@ const STRONG_POSITION_RATE = TRADING.STRONG_POSITION_RATE;
 const COOLDOWN_LOSSES      = TRADING.COOLDOWN_LOSSES;
 const COOLDOWN_DAYS        = TRADING.COOLDOWN_DAYS;
 
-/**
- * 강력 신호 판단 기준:
- * 실제 봇: {거래량급증, MA정배열, 전고점돌파} 3개 중 2개 이상.
- * 백테스트: 거래량 미지 → 가용 조건 2개. 둘 다 충족 시 strong.
- */
-const STRONG_COND_REQUIRED = 2;
 
 // ── 유틸 ─────────────────────────────────────────────────────────────────────
 
@@ -117,7 +112,6 @@ function analyzeSignal(
   daily: DailyBar[],
   dayIdx: number,
   n: number,
-  minRangeRate?: number,
 ): SignalResult | null {
   // MA60 계산(62일) + N일 데이터 모두 필요
   if (dayIdx < Math.max(62, n)) return null;
@@ -136,13 +130,6 @@ function analyzeSignal(
   // 목표가가 시가 대비 15% 초과 → 당일 달성 불가, 스킵
   if ((nDayHigh - today.open) / today.open > 0.15) return null;
 
-  // 최소 변동폭 필터: 전일 레인지가 너무 작으면 힘없는 돌파로 간주
-  if (minRangeRate !== undefined && dayIdx >= 1) {
-    const prev = daily[dayIdx - 1]!;
-    const prevRange = (prev.high - prev.low) / prev.close;
-    if (prevRange < minRangeRate) return null;
-  }
-
   // ── MA 계산 (완성 캔들 기준) ──────────────────────────────────────────────
   const closes = daily.slice(Math.max(0, dayIdx - 60), dayIdx).map(b => b.close);
   if (closes.length < 60) return null;
@@ -154,19 +141,14 @@ function analyzeSignal(
   // MA5>MA20: 단기 상승 모멘텀 / open>MA60: 장기 상승권
   const isMaAligned = ma5 > ma20 && today.open > ma60;
 
-  // 거래량 급증: 장 시작 전 미지 → 항상 false (보수적)
-  const isVolumeSurge = false;
-
   // 장기 돌파 확인: N일 고점 ≈ 2N일 고점이면 더 긴 추세의 돌파 (강한 신호)
   const longerN    = Math.min(n * 2, dayIdx);
   const longHigh   = Math.max(...daily.slice(dayIdx - longerN, dayIdx).map(b => b.high));
   const isLongerBreakout = nDayHigh >= longHigh * 0.999;
 
   // ── 종합 판단 ─────────────────────────────────────────────────────────────
-  const strongCount = [isVolumeSurge, isMaAligned, isLongerBreakout].filter(Boolean).length;
-
   const signalStrength: 'strong' | 'normal' =
-    strongCount >= STRONG_COND_REQUIRED ? 'strong' : 'normal';
+    isMaAligned && isLongerBreakout ? 'strong' : 'normal';
 
   const recommendedPositionRate =
     signalStrength === 'strong' ? STRONG_POSITION_RATE : NORMAL_POSITION_RATE;
@@ -255,6 +237,10 @@ export class BacktestSimulator {
     let skippedByPositionCap              = 0;
     const simultaneousPositionDist        = new Map<number, number>();
 
+    // 에쿼티 커브 피드백 상태
+    let equityPeak     = config.initialCapital;
+    let positionScale  = 1.0;  // 1.0 = 정상, 0.5 = 절반
+
     // 마켓별 쿨다운 상태 (v2 신규)
     const marketStates = new Map<string, MarketState>();
     const getMS = (market: string): MarketState => {
@@ -293,6 +279,10 @@ export class BacktestSimulator {
         dailyIdxMap,
       );
 
+      // ── 시장 국면 필터 (BTC 일봉 종가 vs 60MA) ───────────────────────────
+      const regimeBlocked = !config.disableRegimeFilter &&
+        this.checkRegimeFilter(marketDailyBars, dateKst, dailyIdxMap);
+
       // ── 마켓별 처리 ──────────────────────────────────────────────────────
       for (const market of config.markets) {
         const dailyBars  = marketDailyBars.get(market);
@@ -313,9 +303,8 @@ export class BacktestSimulator {
         const ms          = getMS(market);
         const inCooldown  = ms.cooldownUntil !== '' && dateKst <= ms.cooldownUntil;
 
-        if (!hasPosition && !btcBlocked && !inCooldown) {
-          const effectiveN = TRADING.MARKET_N_VALUES[market] ?? config.n;
-          const s = analyzeSignal(dailyBars, dayIdx, effectiveN, config.minRangeRate);
+        if (!hasPosition && !btcBlocked && !regimeBlocked && !inCooldown) {
+          const s = analyzeSignal(dailyBars, dayIdx, config.n);
           if (s !== null) signal = s;
         }
 
@@ -449,7 +438,7 @@ export class BacktestSimulator {
             if (bar.high >= breakoutTargetPrice) {
               const entryPrice   = breakoutTargetPrice;
               const investAmount = Math.min(
-                krwAvailable * recommendedPositionRate,
+                krwAvailable * recommendedPositionRate * positionScale,
                 krwAvailable * 0.99,
               );
 
@@ -480,7 +469,8 @@ export class BacktestSimulator {
                   dcaCount:       0,
                   signalStrength,
                 });
-                krwAvailable += received;
+                krwAvailable -= investAmount; // 매수 원가 차감 (동캔들 손절에서 누락됐던 부분)
+                krwAvailable += received;    // 손절 매도 수령
 
                 const st = getMS(market);
                 st.consecutiveLosses++;
@@ -525,6 +515,13 @@ export class BacktestSimulator {
       const cnt = positions.size;
       simultaneousPositionDist.set(cnt, (simultaneousPositionDist.get(cnt) ?? 0) + 1);
 
+      // 에쿼티 커브 피드백: 전고점 갱신 및 포지션 스케일 결정
+      if (config.equityFeedbackThreshold !== undefined) {
+        if (equity > equityPeak) equityPeak = equity;
+        const drawdown = equityPeak > 0 ? (equityPeak - equity) / equityPeak : 0;
+        positionScale  = drawdown > config.equityFeedbackThreshold ? 0.5 : 1.0;
+      }
+
     } // end day loop
 
     // ── 종료 시 미청산 포지션 강제 청산 ──────────────────────────────────────
@@ -553,6 +550,28 @@ export class BacktestSimulator {
     }
 
     return { trades, equityCurve, skippedByPositionCap, simultaneousPositionDist };
+  }
+
+  // ── 시장 국면 필터 ────────────────────────────────────────────────────────
+
+  /**
+   * BTC 일봉 종가 < BTC 60일 SMA이면 하락 국면으로 판단하여 true 반환.
+   * BTC 데이터 부족 시 false 반환 (보수적 — 차단하지 않음).
+   */
+  private checkRegimeFilter(
+    marketDailyBars: Map<string, DailyBar[]>,
+    dateKst:         string,
+    dailyIdxMap:     Map<string, Map<string, number>>,
+  ): boolean {
+    const btcBars = marketDailyBars.get('KRW-BTC');
+    const btcIdx  = dailyIdxMap.get('KRW-BTC')?.get(dateKst);
+    if (!btcBars || btcIdx === undefined || btcIdx < REGIME_MA_PERIOD) return false;
+
+    const slice = btcBars.slice(btcIdx - REGIME_MA_PERIOD, btcIdx);
+    const ma    = slice.reduce((s, b) => s + b.close, 0) / slice.length;
+    const todayClose = btcBars[btcIdx]!.close;
+
+    return todayClose < ma;
   }
 
   // ── BTC 하락 감지 ─────────────────────────────────────────────────────────

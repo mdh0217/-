@@ -15,10 +15,10 @@ export const TRADING = {
   STOP_LOSS_RATE: 0.03,
 
   /**
-   * 트레일링 스탑 활성화: 평단 대비 +2%
-   * (2.5% → 2%: 조기 활성화로 더 많은 수익 보호 — 365일 백테스트 확인)
+   * 트레일링 스탑 활성화: 평단 대비 +4%
+   * (2% → 4%: 활성화 임계 완화로 조기 트리거 방지 — 15마켓 120일 비교에서 손실 -18.76% → -6.24% 개선)
    */
-  TRAILING_ACTIVATE_RATE: 0.02,
+  TRAILING_ACTIVATE_RATE: 0.04,
 
   /**
    * 트레일링 스탑 익절 트리거: 고점 대비 -2%
@@ -68,18 +68,11 @@ export const TRADING = {
   COOLDOWN_DAYS: 3,
 
   /**
-   * 마켓별 최적 N값 (365일 백테스트 per-market 최적화 기반)
-   * 나머지 마켓은 env.nDayPeriod(기본 20) 사용
+   * 시장 국면 필터: BTC 일봉 종가 > BTC N일 단순이동평균이면 상승 국면으로 판단
+   * 하락 국면(BTC < MA)에서는 신규 진입 차단
    */
-  MARKET_N_VALUES: {
-    'KRW-ADA':  25,  // N=25 Sharpe 1.65 vs N=20 1.17
-    'KRW-SOL':  15,  // N=15 Sharpe confirmed
-    'KRW-DOGE': 10,  // N=10 OOS Sharpe 2.36
-    'KRW-TRX':  10,  // N=10 higher trade count, less overfit
-    'KRW-DOT':  10,  // N=10 Sharpe 2.27 vs N=20 1.65
-    'KRW-STX':  10,  // N=10 Sharpe 2.24 vs N=20 1.59
-    'KRW-SUI':  15,  // N=15 Sharpe confirmed
-  } as Record<string, number>,
+  REGIME_MA_PERIOD: 60,
+
 } as const;
 
 // ── 엔진 실행 파라미터 ────────────────────────────────────────────────────────

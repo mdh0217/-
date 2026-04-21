@@ -235,6 +235,69 @@ export function printWarnings(m: BacktestMetrics): void {
   }
 }
 
+// ── 신호 강도별 성과 분석 ─────────────────────────────────────────────────────
+
+export function printSignalStrengthBreakdown(trades: SimulatedTrade[]): void {
+  if (trades.length === 0) return;
+
+  const groups = { strong: [] as SimulatedTrade[], normal: [] as SimulatedTrade[] };
+  for (const t of trades) groups[t.signalStrength].push(t);
+
+  const summarize = (ts: SimulatedTrade[]) => {
+    if (ts.length === 0) return null;
+    const wins   = ts.filter(t => t.pnlKrw > 0);
+    const losses = ts.filter(t => t.pnlKrw <= 0);
+    const winPct = (wins.length / ts.length) * 100;
+    const avgWin = wins.length  > 0 ? wins.reduce((s, t) => s + t.pnlRate, 0) / wins.length * 100   : 0;
+    const avgLos = losses.length > 0 ? losses.reduce((s, t) => s + t.pnlRate, 0) / losses.length * 100 : 0;
+    const totalPnl = ts.reduce((s, t) => s + t.pnlKrw, 0);
+    const grossWin = wins.reduce((s, t) => s + t.pnlKrw, 0);
+    const grossLos = Math.abs(losses.reduce((s, t) => s + t.pnlKrw, 0));
+    const pf = grossLos > 0 ? grossWin / grossLos : Infinity;
+    return { count: ts.length, winPct, avgWin, avgLos, totalPnl, pf };
+  };
+
+  const s = summarize(groups.strong);
+  const n = summarize(groups.normal);
+
+  console.log(`\n${ANSI.bold}  신호 강도별 성과 분석${R}`);
+  console.log(line('·'));
+  console.log('  구분      거래   승률      평균수익   평균손실   PF         총손익(KRW)');
+  console.log(line('·'));
+
+  const row = (label: string, d: ReturnType<typeof summarize>) => {
+    if (!d) { console.log(`  ${label.padEnd(8)}  (데이터 없음)`); return; }
+    const wr   = `${d.winPct.toFixed(1)}%`.padStart(6);
+    const aw   = colorPct(d.avgWin);
+    const al   = colorPct(d.avgLos);
+    const pf   = fmtPF(d.pf);
+    const pnl  = colorNum(d.totalPnl, '원');
+    console.log(
+      `  ${label.padEnd(8)}` +
+      `  ${String(d.count).padStart(3)}회` +
+      `  ${wr}` +
+      `  ${aw.padEnd(20)}` +
+      `  ${al.padEnd(20)}` +
+      `  ${pf.padEnd(16)}` +
+      `  ${pnl}`,
+    );
+  };
+
+  row('강력(S)', s);
+  row('보통(N)', n);
+  console.log(line('·'));
+
+  // 결론 메시지
+  if (s && n) {
+    const winDiff = s.winPct - n.winPct;
+    const icon = winDiff > 0 ? ANSI.green : ANSI.red;
+    console.log(
+      `  강력 신호 승률 차이: ${icon}${winDiff >= 0 ? '+' : ''}${winDiff.toFixed(1)}%${R}` +
+      `  PF 차이: ${fmtPF(s.pf)} vs ${fmtPF(n.pf)}`,
+    );
+  }
+}
+
 // ── 내부 헬퍼 ────────────────────────────────────────────────────────────────
 
 function countExitReasons(trades: SimulatedTrade[]): Record<SimulatedTrade['exitReason'], number> {

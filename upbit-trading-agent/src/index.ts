@@ -55,8 +55,7 @@ async function main(): Promise<void> {
 
   const db = await getDatabase(); // engine.initialize()가 이미 호출했으므로 싱글턴 반환
 
-  // 웹서버 없는 진입점이므로 closeServer는 no-op
-  registerShutdownHandlers(engine, () => { /* no web server */ }, db);
+  registerShutdownHandlers(engine, () => {}, db);
 
   const intervalSec = env.intervalSec;
   await engine.start(intervalSec * 1000);

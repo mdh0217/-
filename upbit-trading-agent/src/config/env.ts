@@ -32,7 +32,7 @@ export const env = {
   tradingMode: str('TRADING_MODE', 'paper') as 'paper' | 'live',
 
   // 매매 한도
-  maxOrderKrw:    num('MAX_ORDER_KRW',    100_000),
+  maxOrderKrw:    num('MAX_ORDER_KRW',    Infinity),
   maxPositions:   num('MAX_POSITIONS',    3),
   initialKrw:     num('INITIAL_KRW',      1_000_000),
   dailyLossLimit: num('DAILY_LOSS_LIMIT', 0.05),   // 일일 최대 손실률 (기본 5%)
@@ -47,7 +47,6 @@ export const env = {
 
   // 시스템
   dbPath:        str('DB_PATH',   './data/trading.db'),
-  healthPort:    num('HEALTH_PORT', 3000),
   intervalSec:   num('INTERVAL_SEC', 60),
   writeStatusFile: process.env['WRITE_STATUS_FILE'] !== 'false',
 

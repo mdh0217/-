@@ -5,11 +5,28 @@
  * DISCORD_WEBHOOK_URL 환경변수가 없으면 조용히 건너뜁니다.
  */
 
+import * as fs   from 'fs';
+import * as path from 'path';
 import { krw, pct } from '../utils/format';
 
 // ── 포맷 헬퍼 ─────────────────────────────────────────────────────────────────
 
 const now = () => new Date().toLocaleString('ko-KR', { timeZone: 'Asia/Seoul' });
+
+// ── 시작 알림 쿨다운 ──────────────────────────────────────────────────────────
+
+const START_LOCK_FILE      = path.join(process.cwd(), '.discord_start_lock');
+const START_COOLDOWN_MS    = 5 * 60 * 1000; // 5분
+
+/** 시작 알림 발송 가능 여부 확인 및 타임스탬프 갱신. 쿨다운 중이면 false. */
+function acquireStartLock(): boolean {
+  try {
+    const raw = fs.readFileSync(START_LOCK_FILE, 'utf8');
+    if (Date.now() - parseInt(raw, 10) < START_COOLDOWN_MS) return false;
+  } catch { /* 파일 없음 = 첫 실행 */ }
+  try { fs.writeFileSync(START_LOCK_FILE, String(Date.now())); } catch { /* 무시 */ }
+  return true;
+}
 
 // ── 자산 요약 헬퍼 ────────────────────────────────────────────────────────────
 
@@ -55,13 +72,14 @@ async function send(payload: object): Promise<void> {
 
 // ── 공개 알림 함수 ────────────────────────────────────────────────────────────
 
-/** 엔진 시작 알림 — 전체 자산 현황 브리핑 포함 */
+/** 엔진 시작 알림 — 전체 자산 현황 브리핑 포함 (5분 쿨다운) */
 export async function notifyEngineStart(opts: {
   krwBalance:    number;
   markets:       string[];
   intervalSec:   number;
   totalInvested: number;
 }): Promise<void> {
+  if (!acquireStartLock()) return;
   await send({
     embeds: [{
       title:       '🚀 트레이딩 엔진 시작',

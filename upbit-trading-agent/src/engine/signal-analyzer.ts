@@ -82,19 +82,11 @@ export class SignalAnalyzer {
     const longHigh    = Math.max(...longSlice.map(c => c.high_price));
     const isLongerBreakout = nDayHigh >= longHigh * LONGER_BREAKOUT_TOLERANCE;
 
-    // ── 4. 거래량 급증 (보조 정보, 신호 판단에는 미사용) ─────────────────────
-    const volumes    = sorted.slice(-21, -1).map(c => c.candle_acc_trade_volume);
-    const avgVolume  = volumes.reduce((s, v) => s + v, 0) / volumes.length;
-    const volumeRatio = today.candle_acc_trade_volume / avgVolume;
-    const isVolumeSurge = false; // 일봉 장중 캔들은 아직 완성 전 — 참고용만 표시
-
     // ── 종합 판단 ─────────────────────────────────────────────────────────────
-    const strongConditionCount = [isMaAligned, isLongerBreakout].filter(Boolean).length;
-
     let signalStrength: SignalAnalysis['signalStrength'];
     if (!isNDayHighBreakout) {
       signalStrength = 'none';
-    } else if (strongConditionCount >= 2) {
+    } else if (isMaAligned && isLongerBreakout) {
       signalStrength = 'strong';
     } else {
       signalStrength = 'normal';
@@ -117,9 +109,6 @@ export class SignalAnalyzer {
     if (isLongerBreakout) {
       reasons.push(`${n * 2}일 고점도 동시 돌파 (대형 추세 확인)`);
     }
-    if (volumeRatio >= 1.25) {
-      reasons.push(`거래량 급증 ${(volumeRatio * 100).toFixed(0)}%`);
-    }
 
     return {
       market,
@@ -129,15 +118,11 @@ export class SignalAnalyzer {
       breakoutTargetPrice,
       nDayHigh,
       n,
-      isVolumeSurge,
-      volumeRatio,
-      avgVolume,
       isMaAligned,
       ma5,
       ma20,
       ma60,
       isLongerBreakout,
-      strongConditionCount,
       signalStrength,
       recommendedPositionRate,
       reasons,
@@ -158,15 +143,11 @@ export class SignalAnalyzer {
       breakoutTargetPrice: 0,
       nDayHigh: 0,
       n,
-      isVolumeSurge: false,
-      volumeRatio: 0,
-      avgVolume: 0,
       isMaAligned: false,
       ma5: 0,
       ma20: 0,
       ma60: 0,
       isLongerBreakout: false,
-      strongConditionCount: 0,
       signalStrength: 'none',
       recommendedPositionRate: 0,
       reasons: [_reason],

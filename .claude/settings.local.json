@@ -7,7 +7,21 @@
       "Bash(git config:*)",
       "Bash(git commit -m 'chore: ECC 초기 설정 완료 \\(P0~P1\\):*)",
       "Bash(bun install:*)",
-      "Bash(npm install:*)"
+      "Bash(npm install:*)",
+      "Bash(npm:*)",
+      "Bash(npx tsc:*)",
+      "Edit",
+      "Write",
+      "Bash(Get-Content \"C:\\\\Users\\\\USER\\\\AppData\\\\Local\\\\Temp\\\\claude\\\\C--Users-USER-OneDrive-Desktop----\\\\188cfb53-4e54-43d4-918f-02e93f89bcf1\\\\tasks\\\\be14nqkrp.output\" -Wait)",
+      "Bash(curl -s http://localhost:3000/health)",
+      "Bash(tasklist /FI \"IMAGENAME eq node.exe\" /NH)",
+      "Bash(curl -s http://localhost:3000/api/status)",
+      "Bash(python -c \"import sys,json; d=json.load\\(sys.stdin\\); print\\('KRW:', d['balance']['krw_available'], '| 오픈포지션:', len\\(d['open_positions']\\), '| 총거래:', d['summary']['total_trades'], '| 총손익:', d['summary']['total_pnl']\\)\")",
+      "Bash(netstat -ano)",
+      "Bash(findstr \":3000 \")",
+      "Bash(tasklist *)",
+      "Bash(wmic process *)",
+      "Skill(update-config)"
     ]
   },
   "hooks": {
@@ -17,7 +31,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "node scripts/hooks/run-with-flags.js pre-compact scripts/hooks/pre-compact.js"
+            "command": "cd /c/Users/USER/OneDrive/Desktop/코딩용 && node scripts/hooks/run-with-flags.js pre-compact scripts/hooks/pre-compact.js"
           }
         ]
       }
@@ -28,7 +42,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "node scripts/hooks/run-with-flags.js post-edit-lint scripts/hooks/post-edit-lint.js"
+            "command": "cd /c/Users/USER/OneDrive/Desktop/코딩용 && node scripts/hooks/run-with-flags.js post-edit-lint scripts/hooks/post-edit-lint.js"
           }
         ]
       }
@@ -38,7 +52,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "node scripts/hooks/run-with-flags.js stop scripts/hooks/stop.js"
+            "command": "cd /c/Users/USER/OneDrive/Desktop/코딩용 && node scripts/hooks/run-with-flags.js stop scripts/hooks/stop.js"
           }
         ]
       }

@@ -42,13 +42,6 @@ export interface BacktestConfig {
   // ── 전략 변형 옵션 (A/B 테스트용) ───────────────────────────────────────────
 
   /**
-   * 최소 변동폭 필터: 전일 레인지(고-저)/전일 종가 < 이 값이면 신호 스킵
-   * 예) 0.005 → 0.5% 미만이면 "힘없는 돌파"로 간주, 진입 안 함
-   * undefined → 필터 미적용 (기본)
-   */
-  minRangeRate?: number;
-
-  /**
    * BTC 하락 차단 임계값 override (기본: TRADING.BTC_DROP_THRESHOLD = -0.015)
    * 예) -0.03 → -3% 이상 급락 시에만 차단 (완화)
    */
@@ -70,10 +63,25 @@ export interface BacktestConfig {
   disableDca?: boolean;
 
   /**
+   * 시장 국면 필터 비활성화
+   * false(기본) → BTC 60MA 하향 시 신규 진입 차단
+   * true        → 국면 필터 무시 (기존 동작)
+   */
+  disableRegimeFilter?: boolean;
+
+  /**
    * 동시 보유 포지션 최대 수 (기본: 무제한)
    * 라이브 봇 env.maxPositions=3 을 시뮬레이션하려면 3 지정
    */
   maxPositions?: number;
+
+  /**
+   * 에쿼티 커브 피드백 임계값
+   * 전고점 대비 낙폭이 이 값 초과 시 포지션 비율 절반으로 축소
+   * 예) 0.03 → 3% 낙폭 시 15%→7.5%, 25%→12.5%
+   * undefined → 피드백 미적용 (기본)
+   */
+  equityFeedbackThreshold?: number;
 }
 
 /** 시뮬레이션 포지션 상태 (내부용) */

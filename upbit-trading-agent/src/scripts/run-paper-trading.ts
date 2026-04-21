@@ -12,7 +12,6 @@ import { validateEnv, env }        from '../config/env';
 validateEnv();
 import { getUpbitClient }          from '../data/upbit-client';
 import { TradingEngine }           from '../engine/trading-engine';
-import { startWebServer }          from '../server/webServer';
 import { getDatabase }             from '../database/db';
 import { registerShutdownHandlers } from '../core/shutdown';
 import { notifyShutdown }          from '../notifications/discord';
@@ -28,10 +27,9 @@ async function main(): Promise<void> {
   const intervalSec = env.intervalSec;
 
   if (loopMode) {
-    const closeServer = await startWebServer();
-    const db          = await getDatabase(); // engine.initialize() 가 이미 호출했으므로 싱글턴 반환
+    const db = await getDatabase(); // engine.initialize() 가 이미 호출했으므로 싱글턴 반환
 
-    registerShutdownHandlers(engine, closeServer, db, async (cause, krwBalance) => {
+    registerShutdownHandlers(engine, () => {}, db, async (cause, krwBalance) => {
       if (cause.kind === 'signal') {
         await notifyShutdown({ kind: 'signal', signal: cause.signal, krwBalance });
       } else {

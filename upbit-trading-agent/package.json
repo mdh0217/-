@@ -17,6 +17,8 @@
     "backtest:n10": "ts-node --project tsconfig.json src/backtest/run-backtest.ts --n 10",
     "backtest:n20": "ts-node --project tsconfig.json src/backtest/run-backtest.ts --n 20",
     "backtest:n55": "ts-node --project tsconfig.json src/backtest/run-backtest.ts --n 55",
+    "backtest:trail": "ts-node --project tsconfig.json src/backtest/run-backtest.ts --trail-compare",
+    "backtest:trail:all": "ts-node --project tsconfig.json src/backtest/run-backtest.ts --trail-compare --all-markets --days 120",
     "typecheck": "tsc --noEmit",
     "clean": "rm -rf dist"
   },

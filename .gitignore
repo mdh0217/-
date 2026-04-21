@@ -41,3 +41,7 @@ out/
 
 # 로그 파일 (자동 생성)
 logs/
+
+# 런타임 락 파일
+upbit-trading-agent/.discord_start_lock
+.claude/scheduled_tasks.lock

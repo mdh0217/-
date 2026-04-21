@@ -28,6 +28,10 @@ const child = spawn(
   },
 );
 
+child.on('error', (err) => {
+  process.stderr.write(`[start-bot] spawn 실패: ${err.message}\n`);
+  process.exit(1);
+});
 child.on('exit', (code) => process.exit(code ?? 0));
 
 // PM2 stop/restart 신호 전달

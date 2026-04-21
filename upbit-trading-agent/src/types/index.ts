@@ -280,10 +280,6 @@ export interface SignalAnalysis {
   breakoutTargetPrice: number;
   nDayHigh: number;
   n: number;
-  // 거래량 급증
-  isVolumeSurge: boolean;
-  volumeRatio: number;
-  avgVolume: number;
   // 이평선 정배열
   isMaAligned: boolean;
   ma5: number;
@@ -292,7 +288,6 @@ export interface SignalAnalysis {
   // 더 긴 기간 고점 돌파 여부 (2N일 고점 ≈ N일 고점 → 대형 추세 확인)
   isLongerBreakout: boolean;
   // 종합
-  strongConditionCount: number;  // 0~2 (이평선 정배열 + 더 긴 기간 돌파)
   signalStrength: 'strong' | 'normal' | 'none';
   recommendedPositionRate: number; // 0.15 or 0.25
   reasons: string[];
