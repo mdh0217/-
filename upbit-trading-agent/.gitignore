@@ -13,7 +13,6 @@ build/
 # ===== 런타임 데이터 =====
 data/*.db
 data/*.db-journal
-data/
 logs/*.log
 logs/*.json
 current-status.txt
