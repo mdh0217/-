@@ -363,37 +363,9 @@ export class TradingEngine {
         };
       }
 
-      // ── 시장 국면 필터: BTC 일봉 종가 < 60MA → 하락 국면 차단 ──────────────
-      const regimeBlocked = await this.checkRegimeFilter();
-      if (regimeBlocked) {
-        return {
-          blocked: true,
-          reason: `BTC 하락 국면 (일봉 종가 < ${TRADING.REGIME_MA_PERIOD}MA)`,
-        };
-      }
-
       return { blocked: false, reason: '' };
     } catch {
-      // 조회 실패 시 차단하지 않음 (가용성 우선)
       return { blocked: false, reason: '' };
-    }
-  }
-
-  private async checkRegimeFilter(): Promise<boolean> {
-    try {
-      const candles = await this.client.getDayCandles('KRW-BTC', TRADING.REGIME_MA_PERIOD + 1);
-      if (candles.length < TRADING.REGIME_MA_PERIOD + 1) return false;
-
-      const sorted    = [...candles].sort(
-        (a, b) => new Date(a.candle_date_time_utc).getTime() - new Date(b.candle_date_time_utc).getTime(),
-      );
-      const todayClose = sorted[sorted.length - 1]!.trade_price;
-      const maSlice    = sorted.slice(-TRADING.REGIME_MA_PERIOD - 1, -1);
-      const ma         = maSlice.reduce((s, c) => s + c.trade_price, 0) / maSlice.length;
-
-      return todayClose < ma;
-    } catch {
-      return false; // 조회 실패 시 차단하지 않음
     }
   }
 
