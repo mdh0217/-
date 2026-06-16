@@ -20,7 +20,7 @@ import {
   MAX_DCA_COUNT,
 } from './position-manager';
 import { Position, PositionEntry, SignalAnalysis } from '../types/index';
-import { notifyEngineStart, notifyBuy, notifySell, notifyWarning, notifyDailyReport } from '../notifications/discord';
+import { notifyEngineStart, notifyBuy, notifySell, notifyWarning, notifyDailyReport, notifyBtcDropEnded } from '../notifications/discord';
 import { DailyLossGuard } from '../core/daily-loss-guard';
 import { logger } from '../utils/logger';
 import { writeStatusFile, MarketStatus, SignalStrength } from '../utils/statusFile';
@@ -90,6 +90,11 @@ export class TradingEngine {
   /** 경고 알림 중복 방지 (사유 키 → 마지막 발송 시각, 10분 쿨다운) */
   private readonly warningSentAt = new Map<string, number>();
   private static readonly WARNING_COOLDOWN_MS = 10 * 60_000;
+
+  /** BTC 급락 이벤트 상태 추적 */
+  private btcDropActive    = false;
+  private btcDropWarnCount = 0;
+  private static readonly BTC_WARN_MAX = 3;
 
   /** 일별 리포트 중복 방지 (KST 날짜 문자열) */
   private lastDailyReportDate = '';
@@ -246,15 +251,30 @@ export class TradingEngine {
     const reason  = marketBlock.blocked  ? marketBlock.reason
                   : dailyGuard.breached  ? `일일 손실 한도 도달 (${(dailyGuard.lossRate * 100).toFixed(2)}%)`
                   : '';
+    // BTC 급락 상태 진입 감지 — 새 이벤트 시작 시 카운터 초기화
+    if (marketBlock.blocked && !this.btcDropActive) {
+      this.btcDropActive    = true;
+      this.btcDropWarnCount = 0;
+      this.warningSentAt.delete('btc_drop');
+    }
+
     if (blocked) {
       logger.warn(`[차단] #${this.iteration} 신규 매수 차단 — ${reason}`);
-      const warnKey = marketBlock.blocked ? 'btc_drop' : 'daily_loss';
-      if (this.canSendWarning(warnKey)) {
-        void notifyWarning({
-          kind:   marketBlock.blocked ? 'btc_drop' : 'daily_loss',
-          detail: reason,
-        });
+      if (marketBlock.blocked) {
+        if (this.btcDropWarnCount < TradingEngine.BTC_WARN_MAX && this.canSendWarning('btc_drop')) {
+          this.btcDropWarnCount++;
+          void notifyWarning({ kind: 'btc_drop', detail: reason });
+        }
+      } else if (this.canSendWarning('daily_loss')) {
+        void notifyWarning({ kind: 'daily_loss', detail: reason });
       }
+    }
+
+    // BTC 급락 종료 감지
+    if (!marketBlock.blocked && this.btcDropActive) {
+      this.btcDropActive    = false;
+      this.btcDropWarnCount = 0;
+      void notifyBtcDropEnded();
     }
 
     if (signal.aborted) return;

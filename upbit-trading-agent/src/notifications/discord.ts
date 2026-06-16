@@ -166,6 +166,18 @@ export async function notifySell(opts: {
   });
 }
 
+/** BTC 급락 종료 알림 — 신규 매수 재개 */
+export async function notifyBtcDropEnded(): Promise<void> {
+  await send({
+    embeds: [{
+      title:       '✅ BTC 급락 종료 — 신규 매수 재개',
+      color:       0x57F287,
+      description: 'BTC 시장 국면이 정상화되어 신규 매수가 재개됩니다.',
+      footer: { text: now() },
+    }],
+  });
+}
+
 /** 경고 알림 — BTC 차단 / 일일 손실 한도 / 연속 타임아웃 쿨다운 */
 export async function notifyWarning(opts: {
   kind:   'btc_drop' | 'daily_loss' | 'timeout_cooldown';

@@ -13,9 +13,15 @@ build/
 # ===== 런타임 데이터 =====
 data/*.db
 data/*.db-journal
+data/backtest-cache/
+data/backtest-results/
+data/snapshots/
+data/daily-snapshot.json
 logs/*.log
 logs/*.json
+logs-backup/
 current-status.txt
+.discord_start_lock
 
 # ===== Node.js =====
 node_modules/

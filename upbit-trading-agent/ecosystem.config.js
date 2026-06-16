@@ -19,9 +19,9 @@ module.exports = {
     restart_delay: 5000,      // 재시작 전 5초 대기
     max_restarts:  10,         // 최대 10회 재시작 (초과 시 stopped 상태)
     min_uptime:    '30s',      // 30초 미만 종료 시 crash 카운트
-    out_file:      'logs/pm2-out.log',
-    error_file:    'logs/pm2-err.log',
-    merge_logs:    true,
+    out_file:      '/dev/null',   // winston이 이미 logs/trading-*.log 에 기록
+    error_file:    '/dev/null',   // 중복 저장 방지 + 디스크 풀 방지
+    merge_logs:    false,
     watch:         false,
     env: {
       NODE_ENV: 'production',
