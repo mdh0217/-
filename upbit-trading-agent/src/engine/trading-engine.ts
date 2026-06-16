@@ -19,7 +19,7 @@ import {
   shouldDCA,
   MAX_DCA_COUNT,
 } from './position-manager';
-import { Position, PositionEntry, SignalAnalysis } from '../types/index';
+import { Position, PositionEntry, SignalAnalysis, UpbitCandle } from '../types/index';
 import { notifyEngineStart, notifyBuy, notifySell, notifyWarning, notifyDailyReport, notifyBtcDropEnded } from '../notifications/discord';
 import { DailyLossGuard } from '../core/daily-loss-guard';
 import { logger } from '../utils/logger';
@@ -395,6 +395,23 @@ export class TradingEngine {
     }
   }
 
+  // ── 캔들 스마트 페치 ──────────────────────────────────────────────────────
+  // DB에 충분한 캔들이 있으면 최신 2개만 API에서 갱신, 없으면 전체 200개 로드
+
+  private async fetchCandles(market: string, count = 200): Promise<UpbitCandle[]> {
+    const cached = this.db.getCandleCount(market);
+    if (cached >= count) {
+      // 오늘·어제 캔들만 갱신
+      const fresh = await this.client.getDayCandles(market, 2);
+      this.db.upsertCandles(market, fresh);
+    } else {
+      // 첫 로드 또는 캐시 부족 — 전량 수집
+      const fresh = await this.client.getDayCandles(market, count);
+      this.db.upsertCandles(market, fresh);
+    }
+    return this.db.getCachedCandles(market, count);
+  }
+
   // ── 마켓 처리 ─────────────────────────────────────────────────────────────
 
   private async processMarket(
@@ -403,7 +420,7 @@ export class TradingEngine {
     tickerAgeMs: number,
     buyBlocked: boolean,
   ): Promise<SignalStrength> {
-    const candles  = await this.client.getDayCandles(market, 200);
+    const candles  = await this.fetchCandles(market, 200);
     const signal   = this.analyzer.analyze(market, candles, tickerPrice);
     const position = this.db.getOpenPosition(market);
 

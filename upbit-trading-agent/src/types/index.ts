@@ -287,6 +287,9 @@ export interface SignalAnalysis {
   ma60: number;
   // 더 긴 기간 고점 돌파 여부 (2N일 고점 ≈ N일 고점 → 대형 추세 확인)
   isLongerBreakout: boolean;
+  // 거래량 확인 (가짜 돌파 필터: 오늘 거래량 ≥ N일 평균 × 1.5)
+  isVolumeConfirmed: boolean;
+  volumeRatio: number;
   // 종합
   signalStrength: 'strong' | 'normal' | 'none';
   recommendedPositionRate: number; // 0.15 or 0.25

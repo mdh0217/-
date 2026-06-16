@@ -6,8 +6,9 @@
  *   보조 조건:
  *     - 이평선 정배열: 5MA > 20MA, 시가 > 60MA
  *     - 더 긴 기간 돌파: N일 고점 ≈ 2N일 고점 (대형 추세 돌파 확인)
+ *     - 거래량 확인: 오늘 거래량 ≥ N일 평균 × 1.5 (가짜 돌파 방지)
  *
- * 강력 신호 (strong):  진입 조건 + 보조 조건 2개 모두 충족 → 비중 25%
+ * 강력 신호 (strong):  진입 조건 + 보조 조건 3개 모두 충족 → 비중 25%
  * 일반 신호 (normal):  진입 조건만 충족                       → 비중 15%
  * 신호 없음 (none):    진입 조건 미충족                       → HOLD
  */
@@ -20,6 +21,7 @@ import { logger } from '../utils/logger';
 
 // N일 고점과 2N일 고점이 얼마나 비슷할 때 '대형 추세 돌파'로 인정할지 허용 오차
 const LONGER_BREAKOUT_TOLERANCE = 0.999; // 0.1% 이내면 동일 수준 돌파로 판단
+const VOLUME_CONFIRM_RATIO = 1.5;        // 오늘 거래량 ≥ N일 평균 × 1.5
 
 export class SignalAnalyzer {
   analyze(
@@ -82,11 +84,17 @@ export class SignalAnalyzer {
     const longHigh    = Math.max(...longSlice.map(c => c.high_price));
     const isLongerBreakout = nDayHigh >= longHigh * LONGER_BREAKOUT_TOLERANCE;
 
+    // ── 4. 거래량 확인 ────────────────────────────────────────────────────────
+    const nDayVolumes   = nDaySlice.map(c => c.candle_acc_trade_volume);
+    const avgVolume     = nDayVolumes.reduce((s, v) => s + v, 0) / nDayVolumes.length;
+    const volumeRatio   = avgVolume > 0 ? today.candle_acc_trade_volume / avgVolume : 0;
+    const isVolumeConfirmed = volumeRatio >= VOLUME_CONFIRM_RATIO;
+
     // ── 종합 판단 ─────────────────────────────────────────────────────────────
     let signalStrength: SignalAnalysis['signalStrength'];
     if (!isNDayHighBreakout) {
       signalStrength = 'none';
-    } else if (isMaAligned && isLongerBreakout) {
+    } else if (isMaAligned && isLongerBreakout && isVolumeConfirmed) {
       signalStrength = 'strong';
     } else {
       signalStrength = 'normal';
@@ -109,6 +117,13 @@ export class SignalAnalyzer {
     if (isLongerBreakout) {
       reasons.push(`${n * 2}일 고점도 동시 돌파 (대형 추세 확인)`);
     }
+    if (isNDayHighBreakout) {
+      reasons.push(
+        isVolumeConfirmed
+          ? `거래량 확인 (${volumeRatio.toFixed(1)}x 평균)`
+          : `거래량 미충족 (${volumeRatio.toFixed(1)}x < 1.5x 평균)`,
+      );
+    }
 
     return {
       market,
@@ -123,6 +138,8 @@ export class SignalAnalyzer {
       ma20,
       ma60,
       isLongerBreakout,
+      isVolumeConfirmed,
+      volumeRatio,
       signalStrength,
       recommendedPositionRate,
       reasons,
@@ -148,6 +165,8 @@ export class SignalAnalyzer {
       ma20: 0,
       ma60: 0,
       isLongerBreakout: false,
+      isVolumeConfirmed: false,
+      volumeRatio: 0,
       signalStrength: 'none',
       recommendedPositionRate: 0,
       reasons: [_reason],

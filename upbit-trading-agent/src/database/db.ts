@@ -21,6 +21,7 @@ import {
   VirtualOrder,
   VirtualOrderSide,
   VirtualOrderType,
+  UpbitCandle,
 } from '../types/index';
 
 const FEE_RATE        = TRADING.FEE_RATE;
@@ -106,6 +107,21 @@ export class DatabaseManager {
         amount      REAL    NOT NULL,
         fee         REAL    NOT NULL,
         created_at  TEXT    NOT NULL
+      );
+
+      CREATE TABLE IF NOT EXISTS candles (
+        market                TEXT    NOT NULL,
+        date                  TEXT    NOT NULL,
+        candle_date_time_utc  TEXT    NOT NULL,
+        candle_date_time_kst  TEXT    NOT NULL,
+        open_price            REAL    NOT NULL,
+        high_price            REAL    NOT NULL,
+        low_price             REAL    NOT NULL,
+        close_price           REAL    NOT NULL,
+        acc_volume            REAL    NOT NULL,
+        acc_price             REAL    NOT NULL,
+        ts                    INTEGER NOT NULL,
+        PRIMARY KEY (market, date)
       );
     `);
     this.save();
@@ -351,6 +367,71 @@ export class DatabaseManager {
     } catch {
       return 0;
     }
+  }
+
+  // ── 캔들 캐시 ────────────────────────────────────────────────────────────────
+
+  /** API에서 받은 캔들을 DB에 upsert (오늘 캔들 갱신 포함) */
+  upsertCandles(market: string, candles: UpbitCandle[]): void {
+    for (const c of candles) {
+      const date = c.candle_date_time_kst.slice(0, 10);
+      this.db.run(
+        `INSERT INTO candles
+         (market, date, candle_date_time_utc, candle_date_time_kst,
+          open_price, high_price, low_price, close_price, acc_volume, acc_price, ts)
+         VALUES (?,?,?,?,?,?,?,?,?,?,?)
+         ON CONFLICT(market, date) DO UPDATE SET
+           open_price  = excluded.open_price,
+           high_price  = excluded.high_price,
+           low_price   = excluded.low_price,
+           close_price = excluded.close_price,
+           acc_volume  = excluded.acc_volume,
+           acc_price   = excluded.acc_price,
+           ts          = excluded.ts`,
+        [
+          market, date,
+          c.candle_date_time_utc, c.candle_date_time_kst,
+          c.opening_price, c.high_price, c.low_price, c.trade_price,
+          c.candle_acc_trade_volume, c.candle_acc_trade_price, c.timestamp,
+        ],
+      );
+    }
+    this.save();
+  }
+
+  /** DB에서 최근 count개 캔들을 오래된 순으로 반환 */
+  getCachedCandles(market: string, count: number): UpbitCandle[] {
+    const results = this.db.exec(
+      'SELECT * FROM candles WHERE market = ? ORDER BY date DESC LIMIT ?',
+      [market, count],
+    );
+    if (!results[0]) return [];
+    return results[0].values
+      .map((row) => {
+        const r = Object.fromEntries(results[0]!.columns.map((c, i) => [c, row[i]]));
+        return {
+          market:                  r['market'] as string,
+          candle_date_time_utc:    r['candle_date_time_utc'] as string,
+          candle_date_time_kst:    r['candle_date_time_kst'] as string,
+          opening_price:           r['open_price'] as number,
+          high_price:              r['high_price'] as number,
+          low_price:               r['low_price'] as number,
+          trade_price:             r['close_price'] as number,
+          timestamp:               r['ts'] as number,
+          candle_acc_trade_price:  r['acc_price'] as number,
+          candle_acc_trade_volume: r['acc_volume'] as number,
+        } as UpbitCandle;
+      })
+      .reverse(); // 오래된 것 → 최신 순으로 정렬
+  }
+
+  /** 특정 마켓의 캐시된 캔들 수 */
+  getCandleCount(market: string): number {
+    const results = this.db.exec(
+      'SELECT COUNT(*) FROM candles WHERE market = ?',
+      [market],
+    );
+    return (results[0]?.values[0]?.[0] as number) ?? 0;
   }
 
   /** KST 기준 오늘 하루 청산 통계 (일별 리포트용) */
